@@ -1,6 +1,7 @@
 package com.tempconverter;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -17,6 +18,7 @@ public class TemperatureConverterGUI extends JFrame {
     private JButton convertButton;
     private JTextField outputField;
     private TemperatureConverter converter;
+    private Border defaultInputBorder;
 
     public TemperatureConverterGUI() {
         converter = new TemperatureConverter();
@@ -28,6 +30,7 @@ public class TemperatureConverterGUI extends JFrame {
 
     private void initializeComponents() {
         inputField = new JTextField(10);
+        defaultInputBorder = inputField.getBorder();
         fromUnitBox = new JComboBox<>(new String[]{"Celsius", "Fahrenheit", "Kelvin"});
         toUnitBox = new JComboBox<>(new String[]{"Celsius", "Fahrenheit", "Kelvin"});
         convertButton = new JButton("Convert");
@@ -74,15 +77,47 @@ public class TemperatureConverterGUI extends JFrame {
         convertButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    double value = Double.parseDouble(inputField.getText());
-                    String fromUnit = (String) fromUnitBox.getSelectedItem();
-                    String toUnit = (String) toUnitBox.getSelectedItem();
-                    double result = converter.convert(value, fromUnit, toUnit);
-                    outputField.setText(String.format("%.2f", result));
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Please enter a valid number.", "Error", JOptionPane.ERROR_MESSAGE);
+                String inputText = inputField.getText().trim();
+                if (inputText.isEmpty()) {
+                    inputField.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Input temperature is required.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                    return;
                 }
+
+                double value;
+                try {
+                    value = Double.parseDouble(inputText);
+                } catch (NumberFormatException ex) {
+                    inputField.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Please enter a valid number (e.g., 36.6 or -10).", "Input Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                String fromUnit = (String) fromUnitBox.getSelectedItem();
+                String toUnit = (String) toUnitBox.getSelectedItem();
+
+                // Physical validation: do not allow values below absolute zero
+                if ("Kelvin".equals(fromUnit) && value < 0) {
+                    inputField.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Kelvin cannot be negative. Absolute zero is 0 K.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if ("Celsius".equals(fromUnit) && value < -273.15) {
+                    inputField.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Temperature cannot be below absolute zero (-273.15 °C).", "Input Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if ("Fahrenheit".equals(fromUnit) && value < -459.67) {
+                    inputField.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    JOptionPane.showMessageDialog(TemperatureConverterGUI.this, "Temperature cannot be below absolute zero (-459.67 °F).", "Input Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Reset any previous error styling
+                inputField.setBorder(defaultInputBorder);
+
+                double result = converter.convert(value, fromUnit, toUnit);
+                outputField.setText(String.format("%.2f", result));
             }
         });
     }
